@@ -104,9 +104,6 @@ static void inertiaTimerCallback(void *context)
     double magnitude = sqrt(scrollState.momentumX * scrollState.momentumX +
                            scrollState.momentumY * scrollState.momentumY);
 
-    printf("Inertia: momentum (%.2f, %.2f), magnitude: %.2f\n",
-           scrollState.momentumX, scrollState.momentumY, magnitude);
-
     if (magnitude < 0.1) {
         printf("Inertia finished (magnitude too low)\n");
         cancelInertia();
@@ -132,9 +129,6 @@ static void checkForMovementStop(void)
         double totalDistance = sqrt(scrollState.accumulatedX * scrollState.accumulatedX +
                                   scrollState.accumulatedY * scrollState.accumulatedY);
 
-        printf("Movement stopped. Duration: %.3fs, Distance: %.1f pixels\n", movementDuration, totalDistance);
-        printf("Threshold: %.1f pixels\n", scrollState.inertiaThresholdPixels);
-
         if (totalDistance >= scrollState.inertiaThresholdPixels) {
 
             // Calculate velocity but cap it to reasonable values
@@ -144,9 +138,6 @@ static void checkForMovementStop(void)
             // Scale down the momentum - we want much smaller initial values
             scrollState.momentumX = velocityX * 0.01; // Scale down by 100x
             scrollState.momentumY = velocityY * 0.01;
-
-            printf("Starting inertia: velocity (%.2f, %.2f) -> momentum (%.2f, %.2f)\n",
-                   velocityX, velocityY, scrollState.momentumX, scrollState.momentumY);
 
             dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0);
             scrollState.inertiaTimer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, queue);
@@ -163,8 +154,6 @@ static void checkForMovementStop(void)
                 scrollState.inertiaActive = true;
                 dispatch_resume(scrollState.inertiaTimer);
             }
-        } else {
-            printf("Inertia not triggered (below thresholds)\n");
         }
     }
 }
@@ -191,7 +180,6 @@ static CGEventRef tapCallback(CGEventTapProxy proxy,
                               CGEventType type, CGEventRef event, void *userInfo)
 {
     if (type == kCGEventMouseMoved && (BUTTON_ENABLED || KEY_ENABLED)) {
-        printf("Mouse movement detected!\n");
 
         cancelInertia();
         scrollState.currentProxy = proxy;
@@ -202,8 +190,6 @@ static CGEventRef tapCallback(CGEventTapProxy proxy,
         double smoothedDeltaX, smoothedDeltaY;
         applySmoothingToDeltas(rawDeltaX, rawDeltaY, &smoothedDeltaX, &smoothedDeltaY);
 
-        printf("Raw: %d,%d -> Smoothed: %.2f,%.2f\n", rawDeltaX, rawDeltaY, smoothedDeltaX, smoothedDeltaY);
-
         if (scrollState.inertiaEnabled) {
             CFAbsoluteTime now = CFAbsoluteTimeGetCurrent();
 
@@ -212,7 +198,6 @@ static CGEventRef tapCallback(CGEventTapProxy proxy,
                 scrollState.movementStartTime = now;
                 scrollState.accumulatedX = 0.0;
                 scrollState.accumulatedY = 0.0;
-                printf("Started tracking movement\n");
             }
 
             scrollState.accumulatedX += smoothedDeltaX;
@@ -330,8 +315,6 @@ static bool getDoublePreference(CFStringRef key, double *valuePtr)
 
 static void initializeScrollState(void)
 {
-    printf("Initializing scroll state...\n");
-
     if (!getBoolPreference(CFSTR("smoothingEnabled"), &scrollState.smoothingEnabled))
         scrollState.smoothingEnabled = DEFAULT_SMOOTHING_ENABLED;
 
@@ -353,11 +336,6 @@ static void initializeScrollState(void)
     if (!getBoolPreference(CFSTR("reverseScroll"), &scrollState.reverseScroll))
         scrollState.reverseScroll = DEFAULT_REVERSE_SCROLL;
 
-    printf("Scroll state initialized. Smoothing: %s, Inertia: %s, Reverse: %s\n",
-           scrollState.smoothingEnabled ? "YES" : "NO",
-           scrollState.inertiaEnabled ? "YES" : "NO",
-           scrollState.reverseScroll ? "YES" : "NO");
-
     if (scrollState.inertiaEnabled) {
         dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0);
         movementCheckTimer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, queue);
@@ -372,10 +350,10 @@ static void initializeScrollState(void)
             });
 
             dispatch_resume(movementCheckTimer);
-            printf("Movement check timer started with %.3fs delay\n", scrollState.movementStopDelay);
         }
     }
 }
+
 
 static void cleanupScrollState(void)
 {
