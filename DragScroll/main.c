@@ -14,6 +14,7 @@
 #define DEFAULT_INERTIA_DECAY 0.92
 #define DEFAULT_INERTIA_THRESHOLD_PIXELS 10.0
 #define DEFAULT_MOVEMENT_STOP_DELAY 0.008
+#define DEFAULT_REVERSE_SCROLL false
 
 static const CFStringRef AX_NOTIFICATION = CFSTR("com.apple.accessibility.api");
 static bool TRUSTED;
@@ -50,6 +51,7 @@ typedef struct {
     bool trackingMovement;
 
     CGEventTapProxy currentProxy;
+    bool reverseScroll;
 } ScrollState;
 
 static ScrollState scrollState = {0};
@@ -83,9 +85,12 @@ static void applySmoothingToDeltas(int rawDeltaX, int rawDeltaY, double *smoothe
 
 static void sendScrollEvent(CGEventTapProxy proxy, double deltaX, double deltaY)
 {
+    // Apply reverse scroll setting
+    double finalDeltaY = scrollState.reverseScroll ? deltaY : -deltaY;
+
     // Only send vertical scrolling - disable horizontal entirely
     CGEventRef scrollWheelEvent = CGEventCreateScrollWheelEvent(
-        NULL, kCGScrollEventUnitPixel, 2, -deltaY, 0.0
+        NULL, kCGScrollEventUnitPixel, 2, finalDeltaY, 0.0
     );
     CGEventTapPostEvent(proxy, scrollWheelEvent);
     CFRelease(scrollWheelEvent);
@@ -345,9 +350,13 @@ static void initializeScrollState(void)
     if (!getDoublePreference(CFSTR("movementStopDelay"), &scrollState.movementStopDelay))
         scrollState.movementStopDelay = DEFAULT_MOVEMENT_STOP_DELAY;
 
-    printf("Scroll state initialized. Smoothing: %s, Inertia: %s\n",
+    if (!getBoolPreference(CFSTR("reverseScroll"), &scrollState.reverseScroll))
+        scrollState.reverseScroll = DEFAULT_REVERSE_SCROLL;
+
+    printf("Scroll state initialized. Smoothing: %s, Inertia: %s, Reverse: %s\n",
            scrollState.smoothingEnabled ? "YES" : "NO",
-           scrollState.inertiaEnabled ? "YES" : "NO");
+           scrollState.inertiaEnabled ? "YES" : "NO",
+           scrollState.reverseScroll ? "YES" : "NO");
 
     if (scrollState.inertiaEnabled) {
         dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0);
