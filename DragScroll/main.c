@@ -83,8 +83,22 @@ static void applySmoothingToDeltas(int rawDeltaX, int rawDeltaY, double *smoothe
 
 static void sendScrollEvent(CGEventTapProxy proxy, double deltaX, double deltaY)
 {
+    // Determine dominant scroll direction to avoid interference
+    double absDeltaX = fabs(deltaX);
+    double absDeltaY = fabs(deltaY);
+
+    // Only scroll in the dominant direction, or vertical if they're equal
+    double finalDeltaX = 0.0;
+    double finalDeltaY = 0.0;
+
+    if (absDeltaY >= absDeltaX) {
+        finalDeltaY = deltaY;  // Vertical scrolling
+    } else {
+        finalDeltaX = deltaX;  // Horizontal scrolling
+    }
+
     CGEventRef scrollWheelEvent = CGEventCreateScrollWheelEvent(
-        NULL, kCGScrollEventUnitPixel, 2, -deltaY, -deltaX
+        NULL, kCGScrollEventUnitPixel, 2, -finalDeltaY, -finalDeltaX
     );
     CGEventTapPostEvent(proxy, scrollWheelEvent);
     CFRelease(scrollWheelEvent);
